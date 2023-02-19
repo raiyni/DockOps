@@ -1,10 +1,12 @@
-module github.com/raiyni/DockOps
+module github.com/raiyni/dockops/v1
 
 go 1.19
 
 require (
 	github.com/go-co-op/gocron v1.18.0
 	github.com/go-git/go-git/v5 v5.5.2
+	github.com/joho/godotenv v1.5.1
+	github.com/pkg/errors v0.9.1
 )
 
 require (
