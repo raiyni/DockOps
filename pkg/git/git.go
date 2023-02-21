@@ -2,12 +2,12 @@ package git
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/config"
+	"github.com/go-git/go-git/v5/plumbing"
+	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
@@ -15,51 +15,46 @@ import (
 )
 
 type gitClient struct {
-}
-
-type BaseOption struct {
-	RepositoryUrl string
-}
-
-type BasicAuth struct {
-	Username string
-	Password string
-}
-
-type SshAuth struct {
-	KeyPath     string
-	KeyPassword string
-}
-
-type FetchOption struct {
-	BaseOption
-	BasicAuth
-	SshAuth
-	ReferenceName string
+	auth RepoAuth
 }
 
 func NewGitClient() *gitClient {
 	return &gitClient{}
 }
 
-func (c *gitClient) LatestHashSsh(ctx context.Context, opt FetchOption) (string, error) {
-	return c.latestCommitSsh(ctx, opt)
+func (c *gitClient) Clone(ctx context.Context, dst string, opt CloneOption) error {
+	key, err := getAuth(opt.RepoAuth)
+	if err != nil {
+		return err
+	}
+
+	gitOptions := git.CloneOptions{
+		URL:   opt.RepositoryUrl,
+		Depth: opt.Depth,
+		Auth:  key,
+	}
+
+	if opt.ReferenceName != "" {
+		gitOptions.ReferenceName = plumbing.ReferenceName(opt.ReferenceName)
+	}
+
+	_, err = git.PlainCloneContext(ctx, dst, false, &gitOptions)
+	if err != nil {
+		return errors.Wrap(err, "failed to clone git repository")
+	}
+
+	return nil
 }
 
-func (c *gitClient) LatestHashHttp(ctx context.Context, opt FetchOption) (string, error) {
-	return c.latestCommitHttp(ctx, opt)
-}
-
-func (c *gitClient) latestCommitSsh(ctx context.Context, opt FetchOption) (string, error) {
+func (c *gitClient) LatestCommit(ctx context.Context, opt FetchOption) (string, error) {
 	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
 		Name: "origin",
 		URLs: []string{opt.RepositoryUrl},
 	})
 
-	key, err := getSshAuth(opt.KeyPath, opt.KeyPassword)
+	key, err := getAuth(opt.RepoAuth)
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return "", err
 	}
 
 	listOptions := &git.ListOptions{
@@ -89,43 +84,15 @@ func (c *gitClient) latestCommitSsh(ctx context.Context, opt FetchOption) (strin
 	return "", errors.Errorf("could not find ref %q in the repository", opt.ReferenceName)
 }
 
-func (c *gitClient) latestCommitHttp(ctx context.Context, opt FetchOption) (string, error) {
-	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
-		Name: "origin",
-		URLs: []string{opt.RepositoryUrl},
-	})
-
-	listOptions := &git.ListOptions{
-		Auth: getBasicAuth(opt.Username, opt.Password),
+func getAuth(opt RepoAuth) (transport.AuthMethod, error) {
+	if opt.KeyPath != "" {
+		return getSshAuth(opt.KeyPath, opt.KeyPassword)
 	}
 
-	refs, err := remote.List(listOptions)
-	if err != nil {
-		if err.Error() == "authentication required" {
-			return "", err
-		}
-		return "", errors.Wrap(err, "failed to list repository refs")
-	}
-
-	referenceName := opt.ReferenceName
-	if referenceName == "" {
-		for _, ref := range refs {
-			if strings.EqualFold(ref.Name().String(), "HEAD") {
-				referenceName = ref.Target().String()
-			}
-		}
-	}
-
-	for _, ref := range refs {
-		if strings.EqualFold(ref.Name().String(), referenceName) {
-			return ref.Hash().String(), nil
-		}
-	}
-
-	return "", errors.Errorf("could not find ref %q in the repository", opt.ReferenceName)
+	return getBasicAuth(opt.Username, opt.Password)
 }
 
-func getBasicAuth(username, password string) *githttp.BasicAuth {
+func getBasicAuth(username, password string) (*githttp.BasicAuth, error) {
 	if password != "" {
 		if username == "" {
 			username = "token"
@@ -134,9 +101,10 @@ func getBasicAuth(username, password string) *githttp.BasicAuth {
 		return &githttp.BasicAuth{
 			Username: username,
 			Password: password,
-		}
+		}, nil
 	}
-	return nil
+
+	return nil, nil
 }
 
 func getSshAuth(path, password string) (*ssh.PublicKeys, error) {

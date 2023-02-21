@@ -1,0 +1,15 @@
+authInfo: &authInfo
+  username: string
+  password: string
+  keyPath: string
+  keyPassword: string
+
+auth:
+  [name]: *authInfo
+
+services:
+  [name]:
+    url: string
+    ref: string
+    auth: string | *authInfo
+    interval: number

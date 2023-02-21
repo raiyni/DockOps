@@ -1,57 +1,18 @@
 package main
 
 import (
-	"context"
 	"fmt"
-	"log"
 	"os"
 
-	"github.com/joho/godotenv"
-	"github.com/raiyni/dockops/v1/pkg/git"
+	_ "github.com/joho/godotenv/autoload"
+	"github.com/raiyni/compose-ops/pkg/config"
 )
 
-func basic(repository string) {
-	g := git.NewGitClient()
-	opts := git.FetchOption{
-		BaseOption: git.BaseOption{
-			RepositoryUrl: repository,
-		},
-	}
-	hash, err := g.LatestHashHttp(context.TODO(), opts)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Printf("Latest hash: %s \n", hash)
-}
-
-func ssh(repository, keyPath string) {
-	g := git.NewGitClient()
-	opts := git.FetchOption{
-		BaseOption: git.BaseOption{
-			RepositoryUrl: repository,
-		},
-		SshAuth: git.SshAuth{
-			KeyPath:     keyPath,
-			KeyPassword: "",
-		},
-	}
-
-	hash, err := g.LatestHashSsh(context.TODO(), opts)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Printf("Latest hash: %s \n", hash)
+func init() {
 }
 
 func main() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
-	ssh(os.Getenv("SSH_REPO"), os.Getenv("SSH_PATH"))
+	fmt.Println(os.Getenv("ABC"))
+	c := config.Store.String("auth.github.username")
+	fmt.Println(c)
 }

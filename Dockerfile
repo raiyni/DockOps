@@ -1,11 +1,28 @@
-FROM alpine:3.17
+FROM golang:1.19-alpine as builder
 
-RUN apk add --update --no-cache docker-cli git
+WORKDIR /go/src/app
 
-WORKDIR /var/opts/gitops
+COPY go.mod ./go.mod
+COPY go.sum ./go.sum
 
-COPY start.sh ./
+COPY cmd ./cmd
+COPY pkg ./pkg
 
-RUN chmod +x start.sh
+RUN apk add --update --no-cache git gcc g++ make
 
-ENTRYPOINT ["./start.sh"]
+RUN go mod download
+
+RUN go build -o /compose-ops cmd/main.go
+
+# Deploy
+FROM alpine:3.17 
+
+RUN apk add --update --no-cache docker-cli
+
+WORKDIR /
+
+COPY --from=builder /compose-ops /compose-ops
+
+RUN touch config.yml
+
+ENTRYPOINT ["/compose-ops"]
