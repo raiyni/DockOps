@@ -2,46 +2,29 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"flag"
+	"testing"
 
+	"github.com/raiyni/compose-ops/pkg/config"
 	"github.com/raiyni/compose-ops/pkg/git"
+	"github.com/rs/zerolog/log"
 )
 
-func basic(repository string) {
-	g := git.NewGitClient()
-	opts := git.FetchOption{
-		BaseOption: git.BaseOption{
-			RepositoryUrl: repository,
-		},
-	}
-	hash, err := g.LatestCommit(context.TODO(), opts)
+var debug = flag.Bool("debug", false, "sets log level to debug")
+var configFile = flag.String("config", "config.yml", "config file path")
 
+func TestLatestCommit(t *testing.T) {
+	store := config.NewSource(*configFile, "main")
+
+	g := git.NewGitClient(store.Services[0])
+	hash, err := g.LatestCommit(context.TODO())
 	if err != nil {
-		fmt.Println(err)
+		t.Error(err)
 	}
 
-	fmt.Printf("Latest hash: %s \n", hash)
-}
-
-func ssh(repository, keyPath string) {
-	g := git.NewGitClient()
-	opts := git.FetchOption{
-		BaseOption: git.BaseOption{
-			RepositoryUrl: repository,
-		},
-		RepoAuth: git.RepoAuth{
-			SshAuth: git.SshAuth{
-				KeyPath:     keyPath,
-				KeyPassword: "",
-			},
-		},
+	if hash == "" {
+		t.Error("hash should not be empty")
+	} else {
+		log.Info().Str("hash", hash).Msg("")
 	}
-
-	hash, err := g.LatestCommit(context.TODO(), opts)
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	fmt.Printf("Latest hash: %s \n", hash)
 }

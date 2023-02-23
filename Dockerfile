@@ -23,6 +23,7 @@ WORKDIR /
 
 COPY --from=builder /compose-ops /compose-ops
 
+RUN mkdir data
 RUN touch config.yml
 
 ENTRYPOINT ["/compose-ops"]

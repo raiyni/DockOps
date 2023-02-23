@@ -5,37 +5,39 @@ import (
 	"strings"
 
 	"github.com/go-git/go-git/v5"
-	"github.com/go-git/go-git/v5/config"
+	gitconfig "github.com/go-git/go-git/v5/config"
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/transport"
 	githttp "github.com/go-git/go-git/v5/plumbing/transport/http"
 	"github.com/go-git/go-git/v5/plumbing/transport/ssh"
 	"github.com/go-git/go-git/v5/storage/memory"
 	"github.com/pkg/errors"
+	"github.com/raiyni/compose-ops/pkg/config"
 )
 
 type gitClient struct {
-	auth RepoAuth
+	service config.Service
 }
 
-func NewGitClient() *gitClient {
-	return &gitClient{}
+func NewGitClient(opts config.Service) *gitClient {
+	return &gitClient{
+		service: opts,
+	}
 }
 
-func (c *gitClient) Clone(ctx context.Context, dst string, opt CloneOption) error {
-	key, err := getAuth(opt.RepoAuth)
+func (c *gitClient) Clone(ctx context.Context, dst string) error {
+	key, err := getAuth(c.service.AuthObj)
 	if err != nil {
 		return err
 	}
 
 	gitOptions := git.CloneOptions{
-		URL:   opt.RepositoryUrl,
-		Depth: opt.Depth,
-		Auth:  key,
+		URL:  c.service.Url,
+		Auth: key,
 	}
 
-	if opt.ReferenceName != "" {
-		gitOptions.ReferenceName = plumbing.ReferenceName(opt.ReferenceName)
+	if c.service.Ref != "" {
+		gitOptions.ReferenceName = plumbing.ReferenceName(c.service.Ref)
 	}
 
 	_, err = git.PlainCloneContext(ctx, dst, false, &gitOptions)
@@ -46,13 +48,13 @@ func (c *gitClient) Clone(ctx context.Context, dst string, opt CloneOption) erro
 	return nil
 }
 
-func (c *gitClient) LatestCommit(ctx context.Context, opt FetchOption) (string, error) {
-	remote := git.NewRemote(memory.NewStorage(), &config.RemoteConfig{
+func (c *gitClient) LatestCommit(ctx context.Context) (string, error) {
+	remote := git.NewRemote(memory.NewStorage(), &gitconfig.RemoteConfig{
 		Name: "origin",
-		URLs: []string{opt.RepositoryUrl},
+		URLs: []string{c.service.Url},
 	})
 
-	key, err := getAuth(opt.RepoAuth)
+	key, err := getAuth(c.service.AuthObj)
 	if err != nil {
 		return "", err
 	}
@@ -66,7 +68,7 @@ func (c *gitClient) LatestCommit(ctx context.Context, opt FetchOption) (string, 
 		return "", errors.Wrap(err, "failed to list repository refs")
 	}
 
-	referenceName := opt.ReferenceName
+	referenceName := c.service.Ref
 	if referenceName == "" {
 		for _, ref := range refs {
 			if strings.EqualFold(ref.Name().String(), "HEAD") {
@@ -81,10 +83,10 @@ func (c *gitClient) LatestCommit(ctx context.Context, opt FetchOption) (string, 
 		}
 	}
 
-	return "", errors.Errorf("could not find ref %q in the repository", opt.ReferenceName)
+	return "", errors.Errorf("could not find ref %q in the repository", c.service.Ref)
 }
 
-func getAuth(opt RepoAuth) (transport.AuthMethod, error) {
+func getAuth(opt config.Auth) (transport.AuthMethod, error) {
 	if opt.KeyPath != "" {
 		return getSshAuth(opt.KeyPath, opt.KeyPassword)
 	}

@@ -9,27 +9,28 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-type auth struct {
+type Auth struct {
 	Username    string
 	Password    string
 	KeyPath     string
 	KeyPassword string
 }
 
-type service struct {
+type Service struct {
 	Name        string
 	Url         string
-	Ref         string `default:"refs/heads/master"`
+	Ref         string `example:"refs/heads/master"`
 	Interval    int    `default:"5"`
 	Auth        string
-	AuthObj     auth
-	CurrentHash string
+	AuthObj     Auth
+	Hash        string
 	Path        string
+	ComposeFile string `default:"docker-compose.yml"`
 }
 
 type store struct {
-	auths    map[string]auth
-	Services []service
+	auths    map[string]Auth
+	Services []Service
 }
 
 func New() *store {
@@ -58,15 +59,15 @@ func NewSource(source, name string) *store {
 	return s
 }
 
-func makeAuths(c *config.Config) map[string]auth {
+func makeAuths(c *config.Config) map[string]Auth {
 	ca := c.SubDataMap("auth")
 	if c == nil {
 		return nil
 	}
 
-	auths := make(map[string]auth)
+	auths := make(map[string]Auth)
 	for _, k := range ca.Keys() {
-		a := &auth{}
+		a := &Auth{}
 
 		key := "auth." + k
 		err := c.MapStruct(key, a)
@@ -81,15 +82,15 @@ func makeAuths(c *config.Config) map[string]auth {
 	return auths
 }
 
-func makeServices(c *config.Config, auths map[string]auth) []service {
+func makeServices(c *config.Config, auths map[string]Auth) []Service {
 	ss := c.Get("services").([]any)
 	if ss == nil {
 		return nil
 	}
 
-	services := make([]service, len(ss))
+	services := make([]Service, len(ss))
 	for i := range ss {
-		s := &service{}
+		s := &Service{}
 
 		key := fmt.Sprintf("services.%d", i)
 		sub := c.SubDataMap(key)
@@ -110,7 +111,7 @@ func makeServices(c *config.Config, auths map[string]auth) []service {
 				} else {
 					a, ok := auths[s.Auth]
 					if !ok {
-						log.Error().Msgf("unable to find auth %s", s.Auth)
+						log.Error().Msgf("unable to find Auth %s", s.Auth)
 					} else {
 						s.AuthObj = a
 					}

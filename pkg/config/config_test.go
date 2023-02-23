@@ -5,7 +5,7 @@ import (
 )
 
 func TestConfigBinding(t *testing.T) {
-	s := NewSource("../../config.yml", "test1")
+	s := NewSource("../../testdata/config.yml", "test1")
 
 	if s.auths == nil {
 		t.Error("auths should exist")
