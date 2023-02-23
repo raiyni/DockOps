@@ -1,15 +1,13 @@
-authInfo: &authInfo
-  username: string
-  password: string
-  keyPath: string
-  keyPassword: string
-
 auth:
-  [name]: *authInfo
+  [name]: 
+    username: string
+    password: string
+    keyPath: string
+    keyPassword: string
 
 services:
-  [name]:
-    url: string
-    ref: string
-    auth: string | *authInfo
-    interval: number
+  - [name]:
+      url: string
+      ref: string
+      auth: string 
+      interval: number

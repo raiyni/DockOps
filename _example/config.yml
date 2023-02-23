@@ -1,0 +1,4 @@
+services:
+  - whoami:
+      url: https://github.com/raiyni/compose-ops-example.git
+      

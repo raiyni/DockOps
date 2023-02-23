@@ -1,0 +1,10 @@
+auth:
+  github:
+    username: 'testy'
+    password: ''
+
+services:
+  - whoami:
+      url: 'https://github.com/raiyni/compose-ops-example.git'
+  - whoami4:
+      auth: github

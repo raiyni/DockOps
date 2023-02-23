@@ -8,6 +8,7 @@ require (
 	github.com/gookit/config/v2 v2.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/pkg/errors v0.9.1
+	github.com/rs/zerolog v1.29.0
 )
 
 require (
