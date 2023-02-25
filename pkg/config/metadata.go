@@ -1,46 +1,47 @@
 package config
 
 import (
-	"bytes"
 	"fmt"
-	"io/ioutil"
 
 	"github.com/gookit/config/v2"
-	"github.com/gookit/config/v2/json"
 	"github.com/rs/zerolog/log"
 )
 
-type metadata struct {
+type Metadata struct {
 	dir  string
 	data *config.Config
 }
 
-func LoadMetaData(dataDir string) *metadata {
+func LoadMetaData(dataDir string) *Metadata {
 	c := config.NewEmpty("data")
 	c.WithOptions(config.ParseEnv)
-	c.AddDriver(json.Driver)
+	c.AddDriver(config.JSONDriver)
 
 	err := c.LoadFiles(fmt.Sprintf("%s/metadata.json", dataDir))
 	if err != nil {
 		log.Error().Msgf("failed to load metadata file: %s", err.Error())
 	}
 
-	return &metadata{
+	return &Metadata{
 		dir:  dataDir,
 		data: c,
 	}
 }
 
-func (m *metadata) Hash(key string) string {
+func (m *Metadata) Hash(key string) string {
 	return m.data.String(fmt.Sprintf("hash.%s", key))
 }
 
-func (m *metadata) Save() error {
-	buf := new(bytes.Buffer)
+func (m *Metadata) SetHash(key, value string) error {
+	return m.data.Set(fmt.Sprintf("hash.%s", key), value)
+}
 
-	config.JSONMarshalIndent = "    "
-	_, err := m.data.DumpTo(buf, config.JSON)
-	ioutil.WriteFile(fmt.Sprintf("%s/metadata.json", m.dir), buf.Bytes(), 0755)
+func (m *Metadata) Save() error {
+	log.Debug().Msgf("saving metadata: %s", m.data.ToJSON())
 
-	return err
+	if m.data.IsEmpty() {
+		m.data.Set("hash", make(map[string]string))
+	}
+
+	return m.data.DumpToFile(fmt.Sprintf("%s/metadata.json", m.dir), config.JSON)
 }

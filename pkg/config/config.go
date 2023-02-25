@@ -28,16 +28,20 @@ type Service struct {
 	ComposeFile string `default:"docker-compose.yml"`
 }
 
-type store struct {
+type Store struct {
 	auths    map[string]Auth
 	Services []Service
 }
 
-func New() *store {
+func init() {
+	config.JSONDriver.MarshalIndent = "    "
+}
+
+func New() *Store {
 	return NewSource("config.yml", "main")
 }
 
-func NewSource(source, name string) *store {
+func NewSource(source, name string) *Store {
 	c := config.NewEmpty(name)
 	c.WithOptions(config.ParseEnv, config.ParseDefault)
 	c.AddDriver(yaml.Driver)
@@ -51,7 +55,7 @@ func NewSource(source, name string) *store {
 	auths := makeAuths(c)
 	services := makeServices(c, auths)
 
-	s := &store{
+	s := &Store{
 		Services: services,
 		auths:    auths,
 	}
@@ -101,9 +105,6 @@ func makeServices(c *config.Config, auths map[string]Auth) []Service {
 			log.Warn().Msgf("cannot decode %s", key)
 		} else {
 			s.Name = name
-			if s.Path == "" {
-				s.Path = name
-			}
 
 			if s.Auth != "" {
 				if auths == nil {

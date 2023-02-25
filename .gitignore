@@ -1,4 +1,5 @@
 **/.env
 build
 *.local.yml
-data
+_example/*.json
+_example/*/
